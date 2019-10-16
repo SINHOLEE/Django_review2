@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block title %} Article::Create
+{% endblock title %}
+
+{% block container %}
+
+{% comment %}  form이 필요함 왜? 입력할 창이 필요하니까 {% endcomment %}
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+  <button type="submit">생성하기</button>
+</form>
+{% endblock container %}
