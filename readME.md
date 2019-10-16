@@ -479,4 +479,16 @@ def update(request, article_pk):
 
 #### 11) delete logic 구현
 
-1. 
+views.py 에 `from django.views.decorators.http import require_POST, require_GET`를 임포트 한 뒤 
+
+```python
+@require_GET
+def index(request):
+    articles = Article.objects.all()
+    
+    return render(request, 'articles/index.html', {'articles': articles})
+
+
+```
+
+- `@require_GET` 혹은 `@require_POST`으로 view 함수들을 관리하면, 명시해놓은 `method`형태의 요청만 받아들이기 때문에 보안 측면에서 유리하다.

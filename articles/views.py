@@ -50,7 +50,7 @@ def update(request, article_pk):
             form.save()
             return redirect('articles:detail', article_pk)
         
-    else: # GET으로 들ㅇ옴
+    else: # GET으로 들어옴
         form = ArticleForm(instance=article)  # 특정 인스턴스를 form안에 넣은채로 form을 생성하겠다.
     context = {'form':form}
     return render(request,'articles/update.html',context )
