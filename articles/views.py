@@ -1,8 +1,8 @@
 
 from django.views.decorators.http import require_POST, require_GET
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import ArticleForm
-from .models import Article
+from .forms import ArticleForm, CommentForm
+from .models import Article, Comment
 from IPython import embed
 
 # Create your views here.
@@ -14,13 +14,18 @@ def index(request):
     return render(request, 'articles/index.html', {'articles': articles})
 
 
-@require_GET
+# @require_GET
 def detail(request, article_pk):
     # 사용자가 적어보낸 article_pk를 통해 detail page를 보여준다.
     # 특정 한개의 article을 꺼내는 방법
     article = get_object_or_404(Article, pk=article_pk)
-    context = {'article' : article}
-    
+    comments = article.comments.all()
+    form = CommentForm()
+    context = {
+        'article' : article,
+        'form' : form,
+        'comments' : comments,
+        }
     return render(request, 'articles/detail.html', context)
 
 
@@ -56,7 +61,7 @@ def update(request, article_pk):
     return render(request,'articles/update.html',context )
 
 
-@require_POST
+# @require_POST
 def delete(request, article_pk):
      # article_pk에 맞는 article을 꺼낸다.
     article = get_object_or_404(Article, pk=article_pk)
@@ -64,3 +69,21 @@ def delete(request, article_pk):
     article.delete()
     
     return redirect('articles:index')
+
+@require_POST
+def comments_create(request, article_pk):
+    form = CommentForm(request.POST)
+    article = get_object_or_404(Article, pk=article_pk)
+    if form.is_valid():
+        new_form = form.save(commit=False)
+        new_form.article = article
+        new_form.save()
+    return redirect('articles:detail', article_pk)
+
+
+@require_POST
+def comments_delete(request, article_pk, comment_pk):
+    comment = get_object_or_404(Comment, pk=comment_pk)
+    comment.delete()
+
+    return redirect('articles:detail', article_pk)

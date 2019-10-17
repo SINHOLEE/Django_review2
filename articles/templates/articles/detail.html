@@ -12,6 +12,20 @@
 <a href="{% url 'articles:update' article.pk %}">[수정하기]</a>
 <form action="{% url 'articles:delete' article.pk %}" method = 'POST'>
   {% csrf_token %}
-  <button type="submit">삭제하기</button>
+  <button type="submit">삭제하기</button>  
 </form>
+<form action="{% url 'articles:comments_create' article.pk %}" method='POST'>
+  {% csrf_token %}
+  {{ form.as_table }}   <button type="submit">댓글작성</button>
+</form>
+
+<hr>
+{% for comment in comments %}
+  
+  <form action="{% url 'articles:comments_delete' article.pk comment.pk %}" method="POST"> 
+    {% csrf_token %}
+      <span>{{ comment }}</span> <button type="submit">댓글삭제</button>
+  </form>
+
+{% endfor %}
 {% endblock container %}

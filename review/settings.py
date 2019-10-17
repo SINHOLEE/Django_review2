@@ -35,8 +35,8 @@ INSTALLED_APPS = [
     # Local apps
     'articles',
 
-    # Third party apps
-    'django_extensions',
+    # # Third party apps
+    # 'django_extensions',
 
     # Django apps
     'django.contrib.admin',
