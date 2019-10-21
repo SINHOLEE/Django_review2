@@ -17,6 +17,7 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('articles/', include('articles.urls')),
+    path('articles/', include('articles.urls')),  
+    path('accounts/', include('accounts.urls')),  # include의 의미가 accounts 앱에 있는 urls.py의 urlpatterns를 찾으라는 뜻이므로 accounts urls.py에 해당 변수가 있어야 한다.
     path('admin/', admin.site.urls),
 ]

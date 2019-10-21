@@ -1,8 +1,10 @@
 
 from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ArticleForm, CommentForm
 from .models import Article, Comment
+from django.http import HttpResponse
 from IPython import embed
 
 # Create your views here.
@@ -10,11 +12,10 @@ from IPython import embed
 @require_GET
 def index(request):
     articles = Article.objects.all()
-    
     return render(request, 'articles/index.html', {'articles': articles})
 
 
-# @require_GET
+@require_GET
 def detail(request, article_pk):
     # 사용자가 적어보낸 article_pk를 통해 detail page를 보여준다.
     # 특정 한개의 article을 꺼내는 방법
@@ -24,11 +25,12 @@ def detail(request, article_pk):
     context = {
         'article' : article,
         'form' : form,
-        'comments' : comments,
+        'comments' : comments,  
         }
     return render(request, 'articles/detail.html', context)
 
 
+@login_required
 def create(request):
     if request.method == 'POST':
         # Article 생성 요청
@@ -47,6 +49,7 @@ def create(request):
     return render(request, 'articles/create.html', context)
 
 
+@login_required
 def update(request, article_pk):
     article = get_object_or_404(Article, pk=article_pk)
     if request.method == 'POST':
@@ -61,29 +64,38 @@ def update(request, article_pk):
     return render(request,'articles/update.html',context )
 
 
-# @require_POST
+# @login_required  # 쓰지 않는 이유 : 어차피 next_page의 url을 받아오는 method가 GET이므로 require_POST 에서 막힌다. 그러므로 다른 로직을 사용한다.(1
+@require_POST
 def delete(request, article_pk):
-     # article_pk에 맞는 article을 꺼낸다.
-    article = get_object_or_404(Article, pk=article_pk)
-    # 삭제한다.
-    article.delete()
-    
-    return redirect('articles:index')
+    if request.user.is_authenticated:
+        # article_pk에 맞는 article을 꺼낸다.
+        article = get_object_or_404(Article, pk=article_pk)
+        # 삭제한다.
+        article.delete()
+        return redirect('articles:index')
+    return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
 
+    
 @require_POST
 def comments_create(request, article_pk):
-    form = CommentForm(request.POST)
-    article = get_object_or_404(Article, pk=article_pk)
-    if form.is_valid():
-        new_form = form.save(commit=False)
-        new_form.article = article
-        new_form.save()
-    return redirect('articles:detail', article_pk)
+    if request.user.is_authenticated:
+
+        form = CommentForm(request.POST)
+        article = get_object_or_404(Article, pk=article_pk)
+        if form.is_valid():
+            new_form = form.save(commit=False)
+            new_form.article = article
+            new_form.save()
+        return redirect('articles:detail', article_pk)
+    return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
 
 
 @require_POST
 def comments_delete(request, article_pk, comment_pk):
-    comment = get_object_or_404(Comment, pk=comment_pk)
-    comment.delete()
+    if request.user.is_authenticated:
 
-    return redirect('articles:detail', article_pk)
+        comment = get_object_or_404(Comment, pk=comment_pk)
+        comment.delete()
+
+        return redirect('articles:detail', article_pk)
+    return HttpResponse('You are Unauthorized : 401 ERROR', status=401)

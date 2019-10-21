@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Accounts::Signup
+{% endblock title %}
+
+{% block container %}
+<H2>회원가입</H2>
+{% comment %} view.signup에서  get 요청으로 이 페이지에 와있ㅎ기 때문에, 다시  form요청으로 보낼때는 action 이 필요없다.  {% endcomment %}
+<form  method="POST"> 
+  {{ form.as_p }}
+  {% csrf_token %}
+  <input type="submit" value='회원가입'>
+</form>
+
+
+{% endblock container %}

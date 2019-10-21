@@ -4,14 +4,19 @@
 {% endblock title %}
 
 {% block container %}
-  <h2>Article List</h2>
-  <a href="{% url 'articles:create' %}">[생성하기]</a>
-  <hr>
+
+  {% if user.is_authenticated %}
+    <h2>Article List</h2>
+    <a href="{% url 'articles:create' %}">[생성하기]</a>
+    <hr>
+  {% else %}
+    <h4>로그인 해야 게시글을 만들 수 있습니다.</h4>
+  {% endif %}
   {% for article in articles %}
     <div>
       <h3>{{ article.pk }}. {{ article.title }}</h3><a href="{% url 'articles:detail' article.pk%}">[자세히보기]</a>
     </div>
     <br>
-  
   {% endfor %}
+
 {% endblock container %} 
