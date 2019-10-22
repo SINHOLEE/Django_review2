@@ -513,6 +513,8 @@ def index(request):
 
 - 전반적인 정리
 
+유저 관련 form을 이용하기 때문에, 우리가 model을 작성할 필요가 없다.
+
 로그인 : 서버에서 세션데이터를 생성
 
 로그인한 상태 :  브라우저에 세션 키를 보유하고 있는 상태
@@ -778,6 +780,7 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
          
          return render(request, 'articles/index.html', {'articles': articles})
      
+     ```
 ```
      
    - ```shell
@@ -803,12 +806,12 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
      In [10]: request.user.username
      Out[10]: 'dltlsgh5'
       
-  ```
-   
+```
+
   - 위 정보를 이용해 각 views.py 에서 랜더하는 함수들에 각 각 조건을 부여하여 다른 화면을 보여주면 로그인 유뮤에 따라 기능이 다른 웹서비스를 제공할 수 있다.
    
 - 즉, 로그인과 로그인 하기 전의 기능을 분리하기 위해 `base.html`과 `views.py`를 수정한다.
-   
+  
      ```django
      # base.html
          {% if  user.is_authenticated  %}
@@ -823,11 +826,11 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
          {% endif %}
      
   ```
-   
+  
   - header 안에 다음과 같이 분리한다.
-   
+  
 - `signup`, `login`  에  다음과 같이 분기를 만든다.
-   
+  
      ```python
      def signup(request):
          if request.user.is_authenticated:
@@ -839,7 +842,7 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
              return redirect('articles:index')
      	......
   ```
-   
+  
      
 
 ## 6. Actions for authenticated user
@@ -923,18 +926,18 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
      if next_page: 
      	return redirect(next_page)
      else:
-  	return redirect('articles:index')
+    	return redirect('articles:index')
      ```
 
      -  url정보에 next페이지라는 애가 있으면! 넥스트페이지로 보내고, 아니면 인덱스로 보내달라는 로직
    -  next_page = 'articles/create/' 정보가 담겨있다.
-     
+   
 - ```python
      return redirect(next_page or 'articles:index')
      ```
    
      - 위 로직과 동일한 코드
-   
+
 4. articles/templates/articles/detail.html
 
    ```django
@@ -1005,3 +1008,335 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
    ```
 
    - `@require_POST` : 로그아웃을 하기  위한 로직을 임포트 한다.
+
+# 유저와 게시글과의 1:N 관계 연결 
+
+- 하나의 유저는 두 개 이상의 게시글을 작성할 수 있다.
+- 한 명의 유저가 여러개의 게시글에 `좋아요` 누를 수 있다.
+- 회원 정보를 변경할 수 있다.(비밀번호, 등등)
+
+## 1. 회원 정보 수정
+
+1. urls.py 
+
+   ```python
+   path('update/', views.update, name='update'),
+   
+   ```
+
+   - `articles` 에서 `update`를 할때처럼 `variable route`가 필요 없는 이유는 로그인 된 상태가 이미 `request`에 있기 때문
+
+2. views.py
+
+   ```python
+   from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, UserChangeForm
+   
+   def update(request):
+       if request.method == 'POST':  # 포스트 요청을 받는다면 수정해주세요
+           pass
+       else:  # GET 요청을 받는다면 수정할 수 있는 페이지를 보여주세요
+           form = UserChangeForm(instance=request.user)      
+           context = { 'form' : form }
+           return render(request, 'accounts/update.html', context)        
+   
+   ```
+
+   - `form = UserChangeForm(instance=request.user)`  : request.user에  회원정보가 담겨져 있으므로 이를 인스턴스에 담아 논 상태로 반환해야 한다.
+
+3. update.html
+
+   ```django
+   {% extends 'base.html' %}
+   {% block title %}
+   Accounts::Update
+   {% endblock title %}
+   
+   {% block container %}
+   <h2>회원 정보 수정</h2>
+   <form  method='POST'>  
+     {% csrf_token %}
+     {{ form.as_p }}
+     <button type="submit">수정하기</button>
+   </form>
+   
+   {% endblock container %}
+   ```
+
+   - `action`을  기존` view` 함수와 같다면, 생략가능 
+
+4. ![캡처7](C:\Users\student\Django\django_review2\images\캡처7.JPG)
+
+   - 회원 정보에서 불필요한 요소를 제거한 뒤 사용자에게 제공한다. 그렇게 하기 위해 `forms.py`를 생성하여 새롭게 구성한다.
+
+5. forms.py
+
+   ```python
+   from django.contrib.auth.forms import UserChangeForm
+   from django.contrib.auth import get_user_model  
+   
+   class CustomUserChangeForm(UserChangeForm):
+       
+       class Meta:
+           model = get_user_model() 
+           fields = ['email', 'first_name', 'last_name']  
+   ```
+
+   - `from django.contrib.auth import get_user_model` : 현재 활성화(active)된 `user model`을 `return` 하는 함수.
+   - `model = get_user_model()`: 유저 모델이 어떤 형태인지 우리는 모른다. 그렇기 때문에 다음의 메서드를 임포트 한다.
+   - fields = ['email', 'first_name', 'last_name'] : 우리가 원하는 `fields`만 넣어야 한다. 알 수 있는 방법은 두가지 있다. 1) admin 계정 이용, 2) api 쪼개기
+
+6. views.py 수정
+
+   ```python
+   from .forms import CustomUserChangeForm
+   
+   def update(request):
+       if request.method == 'POST':  # 포스트 요청을 받는다면 수정해주세요
+           form = CustomUserChangeForm(request.POST, instance=request.user)
+           if form.is_valid():
+               form.save()
+               return redirect('articles:index')
+       else:  # GET 요청을 받는다면 수정할 수 있는 페이지를 보여주세요
+           # form = UserChangeForm(instance=request.user)  
+           form = CustomUserChangeForm(instance=request.user)
+   
+       context = { 'form' : form }
+       return render(request, 'accounts/update.html', context)        
+   
+   ```
+
+   - `from .forms import CustomUserChangeForm` : 커스텀한 모델폼만 사용자에게 제공한다.
+   - form = CustomUserChangeForm(instance=request.user)` : 우리가 커스텀한 form 내용만 노출해서 사용자에게 제공한다.
+
+7. base.html
+
+   ```django
+   <a href="{% url 'accounts:update' %}">[회원정보수정]</a>
+   
+   ```
+
+8. 결과창 : @login_reqired가 필요![캡처8](C:\Users\student\Django\django_review2\images\캡처8.JPG)
+
+9. views.py
+
+   ```python
+   from django.contrib.auth.decorators import login_required
+   
+   @login_required
+   
+   ```
+
+   
+
+## 2. 비밀번호 변경
+
+1. urls.py
+
+   ```python
+   path('password/', views.password, name='password'),
+   ```
+
+2. views.py  : `PasswordChangeForm` 임포트
+
+   ```python
+   from django.contrib.auth.forms import PasswordChangeForm 
+   
+   def password(request):
+       if request.method =='POST':  # 실제 비밀번호 변경
+           pass
+       else:  # 사용자가 
+           form = PasswordChangeForm(request.user)
+           context = { 'form' : form }
+           return render(request, 'accounts/password.html', context)
+   ```
+
+   - `form = PasswordChangeForm(request.user)` : `update` 와는 다르게 `instance=`로 받지 않고 `request.user`로 바로 받는다.
+
+3. password.html
+
+   ```django
+   {% extends 'base.html' %}
+   
+   {% block title %}Accounts::Password
+   {% endblock title %}
+   
+   {% block container %}
+   <h2>비밀번호 변경</h2>
+   <form method="POST">
+     {% csrf_token %}
+     {{ form.as_p }}
+     <button type="submit" class='btn btn danger'>변경하기</button>
+   </form>
+   {% endblock container %}
+   
+   
+   
+   ```
+
+   
+
+4. views.py 마무리
+
+   ```python
+   from django.contrib.auth import update_session_auth_hash  
+   
+   @login_required
+   def password(request):
+       if request.method =='POST':  # 실제 비밀번호 변경
+           form = PasswordChangeForm(request.user, request.POST)
+           if form.is_valid():
+               user = form.save()  
+               update_session_auth_hash(request, user)
+               return redirect('accounts:update')
+       else:  # 사용자가 
+           form = PasswordChangeForm(request.user)
+       context = { 'form' : form }
+       return render(request, 'accounts/password.html', context)
+   ```
+
+   - `from django.contrib.auth import update_session_auth_hash` :  세션 정보가 바뀔 때 자동으로 해쉬값을 업데이트 해주는 기능
+   - `user = form.save()` 이렇게까지 하면 비밀번호는 변경이 되지만, 변경되고 나서 로그인이 풀린다.  그 이유는 비밀번호가 변경되면 **세션에 저장되어 있던 데이터가 바뀌면서**, 기존에 가지고 있던 세션값과 변경 후 세션이 달라지기 때문이다. 
+   - 이를 해결하기 위해 `update_session_auth_hash(request, user)`를 입력한다.
+   - 첫번째 인자 : request, 두번째인자 : user는 form.save()가 반환하는 값을 인자로 한다.
+   - `@login_required` : 로그아웃 상태에서 GET요청으로 접근하지 못하도록 제한한다.
+
+
+
+## 3. html 통합하기
+
+- templates/accounts/ html 의 세부내용을 제외하고는 비슷하다. 
+
+- ```django
+  {% extends 'base.html' %}
+  
+  {% block title %}Accounts
+  {% endblock title %}
+  
+  {% block container %}
+  
+  {% if request.resolver_match.url_name == 'signup' %}
+  <h2>회원가입</h2>
+  {% elif request.resolver_match.url_name == 'login' %}
+  <h2>로그인</h2>
+  {% elif request.resolver_match.url_name == "update" %}
+  <h2>내 정보 수정</h2>
+  {% else %}  
+  <h2>비밀번호 변경</h2>
+  {% endif %}
+  
+    <form method="POST">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">submit</button>
+    </form>
+  
+  {% endblock container %}
+  ```
+
+## 4. articles 데이터와 user data 연결하기(n:n관계)
+
+- 다대 다 관계에서는 하나의 테이블을 추가로 만들어 관리해야한다.
+
+-  유저모델을 불러올 때, 다른 모든곳에서는 `get_user_model  `을 써야하지만, models.py를 작성할때 만큼은 `settings.AUTH_USER_MODEL` 를 이용하여 가져온다.
+
+- articles/models.py
+
+  ```python
+  from django.conf import settings
+  
+  class Article(models.Model):
+      title = models.CharField(max_length=20) # max_length는 필수 속성
+      content = models.TextField()
+      created_at = models.DateTimeField(auto_now_add=True) # 데이터가 새로 추가되었을 때만.
+      updated_at = models.DateTimeField(auto_now=True)
+      user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+      class Meta:
+          ordering = ('-pk', )
+  
+  ```
+
+  - `    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)` : 중요!!! `get_user_model` 이 아니다.
+  - `user` 는 이 아티클에 대한 한 명의 유저정보를 저장하고 있다.
+  - 반대로, 유저가 작성한 모든 게시글을 보여달라고 할때는 `user.Article_set_all()`로 호출해야한다
+
+- ```bash
+  $ python manage.py makemigrations
+  
+  You are trying to add a non-nullable field 'user' to article without a default; we can't do that (the database needs something to populate existing rows).
+  Please select a fix:
+   1) Provide a one-off default now (will be set on all existing rows with a null value for this column)
+   2) Quit, and let me add a default in models.py
+  
+  
+  Select an option: 1
+  Please enter the default value now, as valid Python
+  The datetime and django.utils.timezone modules are available, so you can do e.g. timezone.now
+  Type 'exit' to exit this prompt
+  
+  >>> 2
+  Migrations for 'articles':
+    articles\migrations\0004_article_user.py
+      - Add field user to article
+      
+  $ python manage.py migrate
+  Operations to perform:
+    Apply all migrations: admin, articles, auth, contenttypes, sessions
+  Running migrations:
+    Applying articles.0004_article_user... OK
+  ```
+
+  - 1번을 선택했다는 뜻은, 현재 작성되어 있는 모든 게시글의 작성자를 임의로 설정하겠다는 뜻.
+  - 그 다음 2번을 선택했다는 것은, 2번아이디가 다 게시했다고 수정한다는 뜻.
+
+- views.py create
+
+  ```python
+  @login_required
+  def create(request):
+      if request.method == 'POST':
+          # Article 생성 요청
+          form = ArticleForm(request.POST)  # title, content
+          
+          if form.is_valid():
+              article = form.save(commit=False)  # 저장하겠다라는 코드
+              article.user = request.user
+              article.save()
+              return redirect('articles:detail', article.pk)
+      else:  # GET 요청
+          # Article 을 생성하기 위한 페이지를 달라는 요청
+  
+          form = ArticleForm()
+      context = {'form' : form}
+      
+      return render(request, 'articles/create.html', context)
+  
+  ```
+
+  - comment 댓글기능 구현할 때와 같이, `form.save()` 가 반환하는 데이터에서 게시글의 user 정보를 request.user 정보로 입력한 후 저장한다.
+
+    ```python
+                article = form.save(commit=False)  # 저장하겠다라는 코드
+                article.user = request.user
+                article.save()
+    
+    ```
+
+    
+
+- detail.html
+
+  ```django
+  {% if article.user == request.user %}
+    <a href="{% url 'articles:update' article.pk %}">[수정하기]</a>
+    <form action="{% url 'articles:delete' article.pk %}" method = 'POST'>
+      {% csrf_token %}
+      <button type="submit">삭제하기</button>  
+    </form>
+  
+  {% endif %}
+  
+  ```
+
+  - 이전까지는 `{% if user.is_authenticated %}` 로 로그인 유무를 판단하여 게시글 수정, 삭제 기능의 노출을 제어했다면, 이제는 게시글 작성한 본인만이 지울 수 있도록 `{% if article.user == request.user %}` 을 통해 제어한다.
+
+  

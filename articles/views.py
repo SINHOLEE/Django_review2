@@ -34,12 +34,13 @@ def detail(request, article_pk):
 def create(request):
     if request.method == 'POST':
         # Article 생성 요청
-        form = ArticleForm(request.POST)  #사용자의 데이터를 가져오겠다ㅓ.
-        # embed()
+        form = ArticleForm(request.POST)  # title, content
+        
         if form.is_valid():
-            form.save()  # 저장하겠다라는 코드
-            
-            return redirect('articles:index')
+            article = form.save(commit=False)  # 저장하겠다라는 코드
+            article.user = request.user
+            article.save()
+            return redirect('articles:detail', article.pk)
     else:  # GET 요청
         # Article 을 생성하기 위한 페이지를 달라는 요청
 
@@ -52,14 +53,18 @@ def create(request):
 @login_required
 def update(request, article_pk):
     article = get_object_or_404(Article, pk=article_pk)
-    if request.method == 'POST':
-        form = ArticleForm(request.POST, instance=article)  # 기존에 존재하는 인스턴스 안에 새롭게 받은 데이터로 바꾸겠다.
-        if form.is_valid():
-            form.save()
-            return redirect('articles:detail', article_pk)
-        
-    else: # GET으로 들어옴
-        form = ArticleForm(instance=article)  # 특정 인스턴스를 form안에 넣은채로 form을 생성하겠다.
+
+    if article.user == request.user:
+        if request.method == 'POST':
+            form = ArticleForm(request.POST, instance=article)  # 기존에 존재하는 인스턴스 안에 새롭게 받은 데이터로 바꾸겠다.
+            if form.is_valid():
+                form.save()
+                return redirect('articles:detail', article_pk)
+            
+        else: # GET으로 들어옴
+            form = ArticleForm(instance=article)  # 특정 인스턴스를 form안에 넣은채로 form을 생성하겠다.
+    else:
+        return redirect('articles:detail', article_pk)
     context = {'form':form}
     return render(request,'articles/update.html',context )
 
@@ -71,10 +76,11 @@ def delete(request, article_pk):
         # article_pk에 맞는 article을 꺼낸다.
         article = get_object_or_404(Article, pk=article_pk)
         # 삭제한다.
-        article.delete()
-        return redirect('articles:index')
-    return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
-
+        if article.user == request.user:
+            article.delete()
+        else:
+            return redirect('articles:detail', article_pk)
+    return redirect('articles:index')
     
 @require_POST
 def comments_create(request, article_pk):

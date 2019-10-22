@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}
+Accounts::Update
+{% endblock title %}
+
+{% block container %}
+<h2>회원 정보 수정</h2>
+{% comment %} action은 기존 view 함수와 같다면, 생략가능 {% endcomment %}
+<form  method='POST'>  
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button type="submit">수정하기</button>
+</form>
+
+{% endblock container %}
