@@ -1255,7 +1255,7 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
 
   - `    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)` : 중요!!! `get_user_model` 이 아니다.
   - `user` 는 이 아티클에 대한 한 명의 유저정보를 저장하고 있다.
-  - 반대로, 유저가 작성한 모든 게시글을 보여달라고 할때는 `user.Article_set_all()`로 호출해야한다
+  - 반대로, 유저가 작성한 모든 게시글을 보여달라고 할때는 `user.article_set.all()`로 호출해야한다
 
 - ```bash
   $ python manage.py makemigrations
@@ -1484,3 +1484,4 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
 
 ## 6. N:N 관계 구축하기
 
+- 좋아요 기능을 구현하기. 

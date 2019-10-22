@@ -83,6 +83,17 @@ def delete(request, article_pk):
     return redirect('articles:index')
     
 
+def like(request, article_pk):
+    # 유저와 아티클의 정보를 각 각 갖고 있어야 한다.
+    user = request.user
+    article = get_object_or_404(Article, pk=article_pk)
+    if article.liked_users.filter(pk=user.pk).exists():
+        user.liked_articles.remove(article)
+    else:
+        user.liked_articles.add(article)  # 유저가 좋아요 누른 아티클들에 현재 article을 추가하겠다.
+    return redirect('articles:detail', article_pk)
+
+
 
 @require_POST
 def comments_create(request, article_pk):

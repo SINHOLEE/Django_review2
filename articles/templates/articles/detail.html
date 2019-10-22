@@ -6,9 +6,17 @@
 
 
 <h2>{{ article.title }}</h2>
+<a href="{% url 'articles:like' article.pk %}">
+{% if user in article.liked_users.all %}
+<i class="fas fa-heart fa-3x" style='color : red'></i>
+{% else %}
+<i class="far fa-heart fa-3x" style='color : grey'></i>
+{% endif %}
+</a>
+<span>{{ article.liked_users.all | length }} 명이 이 글을 좋아합니다.</span>
 <p>{{ article.created_at }}</p>
 <p class='text-secondary'> 작성자 : {{ article.user }}</p>
-
+<hr>
 <p>{{ article.content }}</p>
 
 {% comment %} {% if user.is_authenticated %} {% endcomment %}
