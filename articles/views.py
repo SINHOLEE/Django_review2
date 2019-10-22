@@ -82,6 +82,8 @@ def delete(request, article_pk):
             return redirect('articles:detail', article_pk)
     return redirect('articles:index')
     
+
+
 @require_POST
 def comments_create(request, article_pk):
     if request.user.is_authenticated:
@@ -91,6 +93,7 @@ def comments_create(request, article_pk):
         if form.is_valid():
             new_form = form.save(commit=False)
             new_form.article = article
+            new_form.user = request.user
             new_form.save()
         return redirect('articles:detail', article_pk)
     return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
@@ -101,7 +104,10 @@ def comments_delete(request, article_pk, comment_pk):
     if request.user.is_authenticated:
 
         comment = get_object_or_404(Comment, pk=comment_pk)
-        comment.delete()
+        
+        if request.user == comment.user:
+            comment.delete()
+        else:
+            return redirect('articles:index')
 
-        return redirect('articles:detail', article_pk)
-    return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
+    return redirect('articles:detail', article_pk)

@@ -1233,11 +1233,9 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
   {% endblock container %}
   ```
 
-## 4. articles 데이터와 user data 연결하기(n:n관계)
+## 4. articles 데이터와 user data 연결하기(1:n관계)
 
-- 다대 다 관계에서는 하나의 테이블을 추가로 만들어 관리해야한다.
-
--  유저모델을 불러올 때, 다른 모든곳에서는 `get_user_model  `을 써야하지만, models.py를 작성할때 만큼은 `settings.AUTH_USER_MODEL` 를 이용하여 가져온다.
+- 유저모델을 불러올 때, 다른 모든곳에서는 `get_user_model  `을 써야하지만, models.py를 작성할때 만큼은 `settings.AUTH_USER_MODEL` 를 이용하여 가져온다.
 
 - articles/models.py
 
@@ -1338,4 +1336,151 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
 
   - 이전까지는 `{% if user.is_authenticated %}` 로 로그인 유무를 판단하여 게시글 수정, 삭제 기능의 노출을 제어했다면, 이제는 게시글 작성한 본인만이 지울 수 있도록 `{% if article.user == request.user %}` 을 통해 제어한다.
 
-- 
+
+## 5. user 와 comment 간 1:N 관계 정의하기
+
+- comment 모델에  user 필드를 추가하여 1:n 관계를 형성한다.
+  - 기존 생성되어 있던 comment가 있을 경우 임의의 사용자 정보로 채운다.
+- view 함수에서 comment 생성 시 user 정보를 함께 저장한다.
+- article 상세보기  화면에서 comment 정보 표현 시 작성자 이름도 함께 보여준다.
+- article 상세보기 화면에서 내가 작성한 comment라면, 삭제하기 버튼을 보여준다.
+- view 함수에서 comment 를 생성한 유저와 요청을 보낸 유저가 같을 경우에만 삭제하기 기능을 수행한다.
+
+1. models.py
+
+   ```python
+   class Comment(models.Model):
+       article = models.ForeignKey(Article, on_delete=models.CASCADE, related_name='comments')
+       content = models.CharField(max_length=200)
+       created_at = models.DateTimeField(auto_now_add=True)
+       user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+       class Meta:
+           ordering = ('-pk',)
+       def __str__(self):
+           return self.content
+   
+   
+   ```
+
+2. bash
+
+   ```bash
+   $ python manage.py makemigrations
+   
+   You are trying to add a non-nullable field 'user' to comment without a default; we can't do that (the database needs something to populate existing rows).
+   Please select a fix:
+    1) Provide a one-off default now (will be set on all existing rows with a null value for this column)
+    2) Quit, and let me add a default in models.py
+   
+   Select an option: 1
+   Please enter the default value now, as valid Python
+   The datetime and django.utils.timezone modules are available, so you can do e.g. timezone.now
+   Type 'exit' to exit this prompt
+   
+   >>> 7
+   Migrations for 'articles':
+     articles\migrations\0005_comment_user.py
+       - Add field user to comment
+   
+   $ python manage.py migrate
+   
+   Operations to perform:
+     Apply all migrations: admin, articles, auth, contenttypes, sessions
+   Running migrations:
+     Applying articles.0005_comment_user... OK
+   
+   
+   ```
+
+3. 해당 작업 후 결과화면![캡처9](images/캡처9.JPG)
+
+4. forms.py
+
+   ```python
+   class CommentForm(forms.ModelForm):
+   
+       class Meta:
+           model = Comment
+           fields = ['content']
+   
+   ```
+
+   - fields 가 `'__all__'` 이었기 때문에 위와 같은 결과가 나왔으므로, `fields`를 노출시킬 항목만 선택하고 `views.py`에서 `user`정보를 제어한다.
+
+5. views.py
+
+   ```python
+   @require_POST
+   def comments_create(request, article_pk):
+       if request.user.is_authenticated:
+   
+           form = CommentForm(request.POST)
+           article = get_object_or_404(Article, pk=article_pk)
+           if form.is_valid():
+               new_form = form.save(commit=False)
+               new_form.article = article
+               new_form.user = request.user
+               new_form.save()
+           return redirect('articles:detail', article_pk)
+       return HttpResponse('You are Unauthorized : 401 ERROR', status=401)
+   
+   
+   @require_POST
+   def comments_delete(request, article_pk, comment_pk):
+       if request.user.is_authenticated:
+   
+           comment = get_object_or_404(Comment, pk=comment_pk)
+           
+           if request.user == comment.user:
+               comment.delete()
+           else:
+               return redirect('articles:index')
+   
+       return redirect('articles:detail', article_pk)
+   
+   ```
+
+   - `  new_form.user = request.user`: 댓글을 다는 사람의 `user`정보를  `comment` 객체에 추가하는 작업
+   - `        if request.user == comment.user` : 로 댓글다는 유저와 요청을 보내는 유저가 같을 경우에만 삭제를 수행한다. 
+
+6. detail.html
+
+   ```django
+     {% if user.is_authenticated %}
+     <form action="{% url 'articles:comments_create' article.pk %}" method='POST'>
+       {% csrf_token %}
+       {{ form.as_table }}   <button type="submit">댓글작성</button>
+     </form>
+     {% endif %}
+   <hr>
+     <ul>
+   {% for comment in comments %}
+     <li>
+     {% if comment.user == request.user  %}
+       <form action="{% url 'articles:comments_delete' article.pk comment.pk %}" method="POST"> 
+         {% csrf_token %}
+         
+       <span>작성자 : {{ comment.user }} . 작성일 : {{ comment.created_at }}   </span><br>
+       <span>내용 : {{ comment }}</span>
+         <button type="submit" class='btn btn-danger'>댓글삭제</button>
+       </form>
+     {% else %}
+       <span>작성자 : {{ comment.user }} . 작성일 : {{ comment.created_at }}   </span><br>
+       <span>내용 : {{ comment }}</span>
+   
+     {% endif %}
+     </li>
+     <br>
+     
+   {% endfor %}
+     </ul>
+   {% endblock container %}
+   ```
+
+   - `  {% if user.is_authenticated %}`: 로그인 상태인 유저만 댓글을 달 수 있도록 제어
+   - `  {% if comment.user == request.user  %}` : 으로 댓글 삭제요청을 보내는 유저와 로그인 유저가 같을 경우에만 삭제 아이콘이 보이도록 제어
+
+
+
+## 6. N:N 관계 구축하기
+

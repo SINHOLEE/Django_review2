@@ -21,22 +21,33 @@
   </form>
 
 {% endif %}
+
+  {% if user.is_authenticated %}
   <form action="{% url 'articles:comments_create' article.pk %}" method='POST'>
     {% csrf_token %}
     {{ form.as_table }}   <button type="submit">댓글작성</button>
   </form>
+  {% endif %}
 <hr>
+  <ul>
 {% for comment in comments %}
-  <li> 
-  {% if user.is_authenticated %}
+  <li>
+  {% if comment.user == request.user  %}
     <form action="{% url 'articles:comments_delete' article.pk comment.pk %}" method="POST"> 
       {% csrf_token %}
-      <span>{{ comment.pk }}  {{ comment }} {{ comment.created_at }}</span>
-      <button type="submit">댓글삭제</button>
+      
+    <span>작성자 : {{ comment.user }} . 작성일 : {{ comment.created_at }}   </span><br>
+    <span>내용 : {{ comment }}</span>
+      <button type="submit" class='btn btn-danger'>댓글삭제</button>
     </form>
   {% else %}
-    <span>{{ comment.pk }}  {{ comment }} {{ comment.created_at }}</span>
+    <span>작성자 : {{ comment.user }} . 작성일 : {{ comment.created_at }}   </span><br>
+    <span>내용 : {{ comment }}</span>
+
   {% endif %}
   </li>
+  <br>
+  
 {% endfor %}
+  </ul>
 {% endblock container %}
