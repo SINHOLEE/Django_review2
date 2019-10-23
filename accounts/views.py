@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
-from .forms import CustomUserChangeForm
+from .forms import CustomUserChangeForm, CustomUserCreationForm
 # UserCreationForm : 유저계정 생성, AuthenticationForm : 세션 생성(로그인 하기!)
-from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, UserChangeForm, PasswordChangeForm # django가 제공하는 로그인 관련 기능
+from django.contrib.auth.forms import AuthenticationForm, UserChangeForm, PasswordChangeForm # django가 제공하는 로그인 관련 기능
 from django.contrib.auth import login as auth_login # 로그인을 하기위한 로직을 임포트 한다.
 from django.contrib.auth import logout as auth_logout # 로그아웃을 하기위한 로직을 임포트 한다.
 from django.contrib.auth import update_session_auth_hash  # 세션 정보가 바뀔 때 자동으로 해쉬값을 업데이트 해주는 기능
@@ -17,17 +17,16 @@ def signup(request):
     if request.user.is_authenticated:
         return redirect('articles:index')
 
-
     if request.method == "POST":  # 포스트 요청을 받으면 회원가입 해주세요
         # embed()
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()  # form.save() 가 반환하는 정보는 사용자의 정보이다. ==  get_user()
             auth_login(request, user)
             return redirect('articles:index')
         
     else: # get요청을 받으면 회원가입 가능한 창을 반환해 주세요
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     context = {
         'form' : form,
     }

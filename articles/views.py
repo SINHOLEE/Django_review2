@@ -1,6 +1,7 @@
 
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model  # follow 기능에 person의 user model을 찾기 위해
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import ArticleForm, CommentForm
 from .models import Article, Comment
@@ -82,7 +83,7 @@ def delete(request, article_pk):
             return redirect('articles:detail', article_pk)
     return redirect('articles:index')
     
-
+@login_required
 def like(request, article_pk):
     # 유저와 아티클의 정보를 각 각 갖고 있어야 한다.
     user = request.user
@@ -120,5 +121,21 @@ def comments_delete(request, article_pk, comment_pk):
             comment.delete()
         else:
             return redirect('articles:index')
+
+    return redirect('articles:detail', article_pk)
+
+
+# 로그인한 유저가 게시글 유저를 follow 혹은 unfollow 기능을 구현한다.
+@login_required
+def follow(request, article_pk, user_pk):
+    user = request.user  # 현재 로그인 되어있는 유저
+
+    # get_user_model()을 불러오기 위해 임포트 한다.
+    person = get_object_or_404(get_user_model(), pk=user_pk) # 게시글 작성자 유저
+    
+    if user in person.followers.all():  # 만약 게시글 작성자의 팔로워 중 로그인한 유저가 있다면, 언팔하겠다.
+        person.followers.remove(user)
+    else:
+        person.followers.add(user)
 
     return redirect('articles:detail', article_pk)

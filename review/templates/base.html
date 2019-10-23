@@ -13,6 +13,7 @@
   <title>{% block title %}{% endblock title %}</title>
 </head>
 <body>
+  <div class="container">
   <header>
     <h1>저희 페이지에 오신걸 환영합니다.</h1>
     {% if  user.is_authenticated  %}
@@ -34,8 +35,8 @@
   </header>
   <a href="{% url 'articles:index' %}">[목록]</a>
 <hr>
-
-  {% block container %}{% endblock container %}
+    {% block container %}{% endblock container %}
+  </div>
   <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
   <script src="  {% static 'bootstrap/js/bootstrap.bundle.min.js' %}"></script>
 

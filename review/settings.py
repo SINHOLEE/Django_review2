@@ -132,3 +132,6 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'assets')
 ]
+
+# accounts라는 app에 User모델을 정의했다는 뜻.
+AUTH_USER_MODEL = 'accounts.User'

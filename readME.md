@@ -1,4 +1,4 @@
-review2
+`review2
 
 1. git bash
 
@@ -1485,3 +1485,176 @@ views.py 와 html파일 안에서 로그인과 비로그인 상태를 관리하�
 ## 6. N:N 관계 구축하기
 
 - 좋아요 기능을 구현하기. 
+
+## 7. 유저와 유저의 N:N 관계 구축하기
+
+-  만약 중개 table을 만들어서 관리한다면, `doctor1.reservation_set.all()`로 접근하여 for문으로 개별 환자에 접근하는 방법밖에 없었다. 그래서 `manytomanyField`를 사용한다. (django ORM 자체기능)
+
+- `user model`을 `customize` 해야 `manytomanyField`를 사용할 수 있다.
+
+- Django `AbstractBaseUser` vs `AbstractUser`
+
+  -  `AbstractBaseUser` : id, password, last_login 
+    - 세밀한 컨트롤은 가능하지만, 손이 많이 간다.
+  -  `AbstractUser` :  baseuser보다 더 많은 필드를 제공받는다.
+    - 자칫 필요없는 정보까지 관리해야 하기때문에, 데이터 낭비가 생길 수 있다.
+
+
+1. models.py
+
+   ```python
+   from django.contrib.auth.models import AbstractUser  
+   from django.conf import settings
+   # Create your models here.
+   
+   
+   class User(AbstractUser):
+       followers = models.ManyToManyField(
+           settings.AUTH_USER_MODEL, 
+           related_name='followings'
+           )
+   
+   ```
+
+   - `from django.contrib.auth.models import AbstractUser` : user model을 customize하기 위해 상속할 수 있는 메소드를 임포트한다. 
+
+   - `from django.conf import settings`: user model을 불러오기 위해 임포트한다.
+
+     
+
+2. settings.py
+
+   ```python
+   
+   AUTH_USER_MODEL = 'accounts.User'
+   ```
+
+   - `accounts`라는 `app`에 `User`모델을 정의했다는 뜻.
+   - 1. models.py 에서`followers = models.ManyToManyField(
+                settings.AUTH_USER_MODEL, 
+                related_name='followings'
+                )` : 는 settings.AUTH_USER_MODEL 과 같다.
+
+3. re migration
+
+   ```bash
+   $ python manage.py makemigrations
+   $ python manage.py migrate
+   ```
+
+4.  회원가입을 실행해보면 다음과 같이 오류가 발생한다.![캡처10](images/캡처10.JPG)
+
+   - UserCreationForm에서 문제가 발생 즉,  forms.py에 UserCreationForm도 커스터마이즈 해야한다.
+
+5. forms.py
+
+   ```python
+   from django.contrib.auth.forms import  UserCreationForm
+   
+class CustomUserCreationForm(UserCreationForm):
+       
+       class Meta:
+           model = get_user_model()
+           fields = UserCreationForm.Meta.fields
+   ```
+   
+   -  커스터마이징 한 유저모델을 인식하기 위해 직접 get_user_model 함수로 유저 모델정보를 넣어준다.
+   
+6. accounts/views.py
+
+   ```python
+   from .forms import CustomUserChangeForm, CustomUserCreationForm
+   
+   def signup(request):
+       if request.user.is_authenticated:
+           return redirect('articles:index')
+   
+       if request.method == "POST":  # 포스트 요청을 받으면 회원가입 해주세요
+           # embed()
+           form = CustomUserCreationForm(request.POST)
+           if form.is_valid():
+               user = form.save()  # form.save() 가 반환하는 정보는 사용자의 정보이다. ==  get_user()
+               auth_login(request, user)
+               return redirect('articles:index')
+           
+       else: # get요청을 받으면 회원가입 가능한 창을 반환해 주세요
+           form = CustomUserCreationForm()
+       context = {
+           'form' : form,
+       }
+       return render(request, 'accounts/form.html', context)
+   
+   ```
+
+   - ` form = CustomUserCreationForm(request.POST)`, `form = CustomUserCreationForm()` 수정
+
+7. articles/urls.py
+
+   ```python
+   path('<int:article_pk>/follow/<int:user_pk>/', views.follow, name='follow'),
+   ```
+
+   - user_pk == 게시글 작성자의 유저 아이디
+
+8. articles/view.py
+
+   ```python
+   from django.contrib.auth import get_user_model  #
+   
+   
+   @login_required
+   def follow(request, article_pk, user_pk):
+       user = request.user  
+       person = get_object_or_404(get_user_model(), pk=user_pk) 
+       
+       if user in person.followers.all():  
+           person.followers.remove(user)
+       else:
+           person.followers.add(user)
+   
+       return redirect('articles:detail', article_pk)
+   
+   ```
+
+   - `from django.contrib.auth import get_user_model`:  follow 기능에 person의 user model을 찾기 위해 임포트한다.
+   - `@login_required` :  로그인한 유저가 게시글 유저를 follow 혹은 unfollow 기능을 구현한다.
+   - `user = request.user` :  현재 로그인 되어있는 유저
+   - `person = get_object_or_404(get_user_model(), pk=user_pk)` : 게시글 작성자 유저
+   - `if user in person.followers.all()`:  만약 게시글 작성자의 팔로워 중 로그인한 유저가 있다면, 언팔하겠다.
+
+9. articles/detail.html
+
+   ```django
+     {% include 'articles/_follow.html' %}
+   
+   ```
+
+   - 아래 로직이 자명하다면 컴포넌트화하여 따로 관리하는 것이 좋다.
+
+10. articles/_follow.html
+
+    ```django
+    <div class="jumbotron text-center text-white bg-dark">
+      <p class="lead mb-1">작성자 정보</p>
+      <h1 class="display-4">{{ article.user.username }}</h1>
+      <hr>
+      <p class="lead">
+      팔로잉 : {{ article.user.followings.all | length }} / 
+      팔로워 : {{ article.user.followers.all | length }}
+      </p>
+      {% if user != article.user %}
+      {% comment %} 만약 내가 게시글 작성자의 팔로워라면 언팔버튼 보여라 {% endcomment %}
+      {% if user in article.user.followers.all %}
+        <a href="{% url 'articles:follow' article.pk article.user.pk %}" class="btn btn-primary btn-lg">
+          Unfollow
+        </a>
+      {% else %}
+        <a href="{% url 'articles:follow' article.pk article.user.pk %}" class="btn btn-primary btn-lg">
+          follow
+        </a>
+      {% endif %}
+      {% endif %}
+    </div>
+    ```
+
+    
